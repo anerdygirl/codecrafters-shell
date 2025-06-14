@@ -3,14 +3,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <limits.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <limits.h>         //PATH_MAX
+#include <unistd.h>         //handles paths and stuff. also uid for ~
+#include <sys/types.h>      //processes?
+#include <sys/wait.h>       //same here
 #include <stdbool.h>
+#include <pwd.h>            //home directory
 
 int main() {
     setbuf(stdout, NULL);
+    //struct passwd *usr = getpwuid(getuid());
+    char *home = getenv("HOME");
 
     while (1) {
         char input[100];
@@ -58,9 +61,17 @@ int main() {
 
         // built-in: cd
        else if (strcmp(argv[0], "cd") == 0) {
-            char* dir = argv[1];
-            //char* dir_cpy = strdup(dir);
-            if (chdir(dir) != 0){
+            char path[PATH_MAX];
+            char* dir = argv[1]; // directory to cd to
+            if (argc == 1 || (argv[1] && strcmp(argv[1], "~") == 0)){
+                dir = home;
+            }
+            else if (dir && dir[0] == '~') {
+                // cd ~/something
+                snprintf(path, sizeof(path), "%s%s", home, dir + 1);
+                dir = path;
+            }
+            if (dir && chdir(dir) != 0){
                 fprintf(stderr, "cd: %s: No such file or directory\n", dir);
             }
         }
