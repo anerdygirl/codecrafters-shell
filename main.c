@@ -37,27 +37,17 @@ int main()
         input[strcspn(input, "\n")] = '\0';
 
         // Tokenize into argv[]
-        /* char *argv[20];
-        int argc = 0;
-        char *token = strtok(input, " ");
-        while (token != NULL && argc < 19) {
-            argv[argc++] = token;
-            token = strtok(NULL, " ");
-        }
-        argv[argc] = NULL;
-
-        if (argc == 0) continue; // skip empty input
-*/
-
+        // single and double quote handling
         int argc, in_quote = 0;
         char *p = input;
         char *argv[20];
         argc = 0;
+        int single_q = 0, double_q = 0;
 
-        while (p)
+        while (*p)
         {
             // Skip leading spaces
-            while (*p == ' ')
+            while (*p == ' ' && !single_q && !double_q)
                 p++;
             if (*p == '\0')
                 break;
@@ -66,38 +56,34 @@ int main()
             argc++;
 
             while (*p)
-            {
-                if (*p == '\'')
+            { //*p == '\'' || 
+                // double inside single
+                if (p[0] == '\'' && !double_q)
                 {
-                    in_quote = !in_quote;
-                    remove_char(p, 0); // remove the quote
+                    single_q = !single_q;
+                    remove_char(p, 0);
                     continue;
                 }
-                if (!in_quote && *p == ' ')
+                // single inside double
+                if (p[0] == '"' && !single_q)
+                {
+                    double_q = !double_q;
+                    remove_char(p, 0);
+                    continue;
+                }
+ 
+                if (!single_q && !double_q && *p == ' ')
                 {
                     *p = '\0';
                     p++;
                     break;
                 }
                 p++;
+                
             }
         }
         argv[argc] = NULL;
 
-        // quotation handling
-        // single quotes
-        /*for (int i = 1; i < argc; i++)
-        {
-            int j = 0;
-            while (argv[i][j] != '\0')
-            {
-                if (argv[i][j] == '\'')
-                    remove_char(argv[i], j);
-                else
-                    j++;
-            }
-        }
-*/
         // Built-in: exit
         if (strcmp(argv[0], "exit") == 0 && (argc == 1 || (argc == 2 && strcmp(argv[1], "0") == 0)))
         {
@@ -141,7 +127,7 @@ int main()
             }
             else if (dir && dir[0] == '~')
             {
-                // cd ~/something
+                // cd ~/sth
                 snprintf(path, sizeof(path), "%s%s", home, dir + 1);
                 dir = path;
             }
