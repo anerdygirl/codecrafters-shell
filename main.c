@@ -9,6 +9,7 @@
 #include <sys/wait.h>  //same here
 #include <stdbool.h>
 #include <pwd.h> //home directory
+#include <fcntl.h>     //redirect output
 
 void remove_char(char *str, int pos)
 {
@@ -16,9 +17,7 @@ void remove_char(char *str, int pos)
     if (pos < 0 || pos >= len)
         return; // out of bounds
     for (int i = pos; i < len; i++)
-    {
         str[i] = str[i + 1];
-    }
 }
 
 int main()
@@ -33,7 +32,6 @@ int main()
         printf("$ ");
         if (!fgets(input, sizeof(input), stdin))
             break;
-        //handle_backslashes(input);
         // Remove newline
         input[strcspn(input, "\n")] = '\0';
 
@@ -108,9 +106,7 @@ int main()
 
         // Built-in: exit
         if (strcmp(argv[0], "exit") == 0 && (argc == 1 || (argc == 2 && strcmp(argv[1], "0") == 0)))
-        {
             break;
-        }
 
         // Built-in: echo
         else if (strcmp(argv[0], "echo") == 0)
@@ -129,13 +125,9 @@ int main()
         {
             char cwd[PATH_MAX];
             if (getcwd(cwd, sizeof(cwd)) != NULL)
-            {
                 printf("%s\n", cwd);
-            }
             else
-            {
                 perror("pwd");
-            }
         }
 
         // built-in: cd
@@ -144,9 +136,7 @@ int main()
             char path[PATH_MAX];
             char *dir = argv[1]; // directory to cd to
             if (argc == 1 || (argv[1] && strcmp(argv[1], "~") == 0))
-            {
                 dir = home;
-            }
             else if (dir && dir[0] == '~')
             {
                 // cd ~/sth
@@ -154,9 +144,7 @@ int main()
                 dir = path;
             }
             if (dir && chdir(dir) != 0)
-            {
                 fprintf(stderr, "cd: %s: No such file or directory\n", dir);
-            }
         }
 
         // Built-in: type
@@ -187,9 +175,7 @@ int main()
                     }
                     free(path_copy);
                     if (!found)
-                    {
                         printf("%s: not found\n", cmd);
-                    }
                 }
             }
         }
@@ -205,14 +191,34 @@ int main()
                 exit(1); // child exits, parent continues loop
             }
             else if (pid > 0)
-            {
                 waitpid(pid, NULL, 0);
-            }
             else
-            {
                 perror("fork");
-            }
         }
+
+        // redirect stdout:
+        // get filename
+        char *out = strchr(input, '>');
+        if (out)
+        {
+            size_t len = out - input;
+            char cmd[100]; // extract cmd
+            strncpy(cmd, input, len);
+            cmd[len] = '\0';
+            out++; // move past '>'
+            while (*out == ' ')
+                out++;
+        }
+        // open file
+        int fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd == -1)
+            perror("open");
+
+
+        if (dup2(fd, STDOUT_FILENO) == -1)
+            perror("dup2");
+
+        close(fd);
     }
     return 0;
 }
