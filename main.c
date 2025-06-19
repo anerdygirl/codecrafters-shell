@@ -20,6 +20,7 @@ void remove_char(char *str, int pos)
         str[i] = str[i + 1];
     }
 }
+
 int main()
 {
     setbuf(stdout, NULL);
@@ -32,13 +33,13 @@ int main()
         printf("$ ");
         if (!fgets(input, sizeof(input), stdin))
             break;
-
+        //handle_backslashes(input);
         // Remove newline
         input[strcspn(input, "\n")] = '\0';
 
         // Tokenize into argv[]
         // single and double quote handling
-        int argc, in_quote = 0;
+        int argc = 0;
         char *p = input;
         char *argv[20];
         argc = 0;
@@ -51,27 +52,48 @@ int main()
                 p++;
             if (*p == '\0')
                 break;
-
+            
             argv[argc] = p;
             argc++;
 
             while (*p)
-            { //*p == '\'' || 
+            {
                 // double inside single
-                if (p[0] == '\'' && !double_q)
+                if (*p == '\'' && !double_q)
                 {
                     single_q = !single_q;
                     remove_char(p, 0);
                     continue;
                 }
                 // single inside double
-                if (p[0] == '"' && !single_q)
+                if (*p == '"' && !single_q)
                 {
                     double_q = !double_q;
                     remove_char(p, 0);
                     continue;
                 }
- 
+                // Handle backslash
+                if (*p == '\\')
+                {
+                    if (double_q && (p[1] == '"' || p[1] == '\\' || p[1] == '$' || p[1] == '`'))
+                    {
+                        remove_char(p, 0);
+                        if (*p != '\0')
+                            p++;
+                        continue;
+                    }
+                    if (!single_q && !double_q)
+                    {
+                        remove_char(p, 0);
+                        if (*p != '\0')
+                            p++;
+                        continue;
+                    }
+                    // skip
+                    p++;
+                    continue;
+                }
+                // reached end of string
                 if (!single_q && !double_q && *p == ' ')
                 {
                     *p = '\0';
