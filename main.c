@@ -8,8 +8,8 @@
 #include <sys/types.h> //processes?
 #include <sys/wait.h>  //same here
 #include <stdbool.h>
-#include <pwd.h> //home directory
-#include <fcntl.h>     //redirect output
+#include <pwd.h>   //home directory
+#include <fcntl.h> //redirect output
 
 void remove_char(char *str, int pos)
 {
@@ -42,6 +42,20 @@ int main()
         char *argv[20];
         argc = 0;
         int single_q = 0, double_q = 0;
+        // filename for stdout
+        char *out = strstr(input, "1>");
+        int offset = 1;
+        if (out)
+            offset = 2;
+        else
+            out = strchr(input, '>');
+        if (out)
+        {
+            *out = '\0'; // terminate command string before '>'
+            out+= offset;       // move past '>'
+            while (*out == ' ')
+                out++; // Skip spaces
+        }
 
         while (*p)
         {
@@ -50,7 +64,7 @@ int main()
                 p++;
             if (*p == '\0')
                 break;
-            
+
             argv[argc] = p;
             argc++;
 
@@ -99,7 +113,6 @@ int main()
                     break;
                 }
                 p++;
-                
             }
         }
         argv[argc] = NULL;
@@ -180,45 +193,38 @@ int main()
             }
         }
 
-        // External command
+        // External command + stdout redirection
         else
         {
             pid_t pid = fork();
             if (pid == 0)
             {
+                // Child process
+                int fd = -1;
+                if(out){
+                    fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                    if (fd == -1)
+                    {
+                        perror("open");
+                        exit(1);
+                    }
+                    if (dup2(fd, STDOUT_FILENO) == -1)
+                    {
+                        perror("dup2");
+                        close(fd);
+                        exit(1);
+                    }
+                    close(fd);
+                }
                 execvp(argv[0], argv);
-                fprintf(stderr, "%s: command not found\n", argv[0]);
-                exit(1); // child exits, parent continues loop
+                perror("execvp");
+                exit(1);
             }
             else if (pid > 0)
                 waitpid(pid, NULL, 0);
             else
                 perror("fork");
         }
-
-        // redirect stdout:
-        // get filename
-        char *out = strchr(input, '>');
-        if (out)
-        {
-            size_t len = out - input;
-            char cmd[100]; // extract cmd
-            strncpy(cmd, input, len);
-            cmd[len] = '\0';
-            out++; // move past '>'
-            while (*out == ' ')
-                out++;
-        }
-        // open file
-        int fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd == -1)
-            perror("open");
-
-
-        if (dup2(fd, STDOUT_FILENO) == -1)
-            perror("dup2");
-
-        close(fd);
     }
     return 0;
 }
