@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <pwd.h>   //home directory
 #include <fcntl.h> //redirect output
+#include <linux/limits.h>
 
 void remove_char(char *str, int pos)
 {
@@ -44,31 +45,15 @@ int main()
         argc = 0;
         int single_q = 0, double_q = 0;
 
-        /*         // filenames for stdout and stderr respectively
-                char *command_str = input;
-                char *out = NULL, *outE = NULL;
-                int offset = 1, offsetE = 1; // default for '>'
-
-                char *p1 = input;
-                char *cmd_p = cmd;
-         */
         char *p = input;
-
         char *stdout_redir = NULL;
-        char *stderr_redir = NULL;
 
         // Find redirection operators
         for (*p; *p; ++p)
         {
             if (*p == '>')
             {
-                if (p != input && *(p - 1) == '2')
-                {
-                    // Found 2>
-                    *(p - 1) = '\0'; // Terminate command before '2'
-                    stderr_redir = p + 1;
-                }
-                else
+                if (!(p != input && *(p - 1) == '2'))
                 {
                     // Found >
                     *p = '\0'; // Terminate command before '>'
@@ -140,50 +125,21 @@ int main()
             }
         }
         argv[argc] = NULL;
+        char *out = NULL; // stdout redirection
 
-        /*         // redirect in copy file?
-                int saved_stdout = -1, saved_stderr = -1;
-                int fd = -1, fdE = -1;
-                if (out)
-                {
-                    fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                    if (fd == -1)
-                    {
-                        perror("open");
-                        // handle error, maybe continue or return
-                        continue;
-                    }
-                    else
-                    {
-                        saved_stdout = dup(STDOUT_FILENO);
-                        if (dup2(fd, STDOUT_FILENO) == -1)
-                        {
-                            perror("dup2");
-                            close(fd);
-                            // handle error
-                            continue;
-                        }
-                    }
-                }
-                if (outE)
-                {
-                    fdE = open(outE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                    if (fdE == -1)
-                    {
-                        perror("open");
-                        continue;
-                    }
-                    else
-                    {
-                        saved_stderr = dup(STDERR_FILENO);
-                        if (dup2(fd, STDERR_FILENO) == -1)
-                        {
-                            perror("dup2");
-                            close(fdE);
-                            continue;
-                        }
-                    }
-                } */
+        // redirect in copy file?
+        int saved_stdout = -1;
+        int fd = -1;
+        if (out)
+        {
+            fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (fd == -1)
+            {
+                perror("open");
+                // handle error, maybe continue or return
+                continue;
+            }
+        }
 
         // Built-in: exit
         if (strcmp(argv[0], "exit") == 0 && (argc == 1 || (argc == 2 && strcmp(argv[1], "0") == 0)))
@@ -285,20 +241,13 @@ int main()
             else
                 perror("fork");
         }
-        /*         if (out)
-                {
-                    fflush(stdout);
-                    dup2(saved_stdout, STDOUT_FILENO);
-                    close(fd);
-                    close(saved_stdout);
-                }
-                if (outE)
-                {
-                    fflush(stderr);
-                    dup2(saved_stderr, STDERR_FILENO);
-                    close(fdE);
-                    close(saved_stderr);
-                } */
+        if (out)
+        {
+            fflush(stdout);
+            dup2(saved_stdout, STDOUT_FILENO);
+            close(fd);
+            close(saved_stdout);
+        }
     }
     return 0;
 }
