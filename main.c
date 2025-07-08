@@ -38,25 +38,49 @@ int main()
         // Tokenize into argv[]
         // single and double quote handling
         int argc = 0;
-        char *p = input;
+
         char *argv[20];
+        char cmd[100];
         argc = 0;
         int single_q = 0, double_q = 0;
-        // filename for stdout
-        char *out = strstr(input, "1>");
-        int offset = 1;
-        if (out)
-            offset = 2;
-        else
-            out = strchr(input, '>');
-        if (out)
+
+        /*         // filenames for stdout and stderr respectively
+                char *command_str = input;
+                char *out = NULL, *outE = NULL;
+                int offset = 1, offsetE = 1; // default for '>'
+
+                char *p1 = input;
+                char *cmd_p = cmd;
+         */
+        char *p = input;
+
+        char *stdout_redir = NULL;
+        char *stderr_redir = NULL;
+
+        // Find redirection operators
+        for (*p; *p; ++p)
         {
-            *out = '\0'; // terminate command string before '>'
-            out+= offset;       // move past '>'
-            while (*out == ' ')
-                out++; // Skip spaces
+            if (*p == '>')
+            {
+                if (p != input && *(p - 1) == '2')
+                {
+                    // Found 2>
+                    *(p - 1) = '\0'; // Terminate command before '2'
+                    stderr_redir = p + 1;
+                }
+                else
+                {
+                    // Found >
+                    *p = '\0'; // Terminate command before '>'
+                    stdout_redir = p + 1;
+                }
+                break; // Only handle one redirection per command for simplicity
+            }
         }
 
+        // if out and if outE block...
+
+        // char *p = command_str;
         while (*p)
         {
             // Skip leading spaces
@@ -117,9 +141,62 @@ int main()
         }
         argv[argc] = NULL;
 
+        /*         // redirect in copy file?
+                int saved_stdout = -1, saved_stderr = -1;
+                int fd = -1, fdE = -1;
+                if (out)
+                {
+                    fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                    if (fd == -1)
+                    {
+                        perror("open");
+                        // handle error, maybe continue or return
+                        continue;
+                    }
+                    else
+                    {
+                        saved_stdout = dup(STDOUT_FILENO);
+                        if (dup2(fd, STDOUT_FILENO) == -1)
+                        {
+                            perror("dup2");
+                            close(fd);
+                            // handle error
+                            continue;
+                        }
+                    }
+                }
+                if (outE)
+                {
+                    fdE = open(outE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                    if (fdE == -1)
+                    {
+                        perror("open");
+                        continue;
+                    }
+                    else
+                    {
+                        saved_stderr = dup(STDERR_FILENO);
+                        if (dup2(fd, STDERR_FILENO) == -1)
+                        {
+                            perror("dup2");
+                            close(fdE);
+                            continue;
+                        }
+                    }
+                } */
+
         // Built-in: exit
         if (strcmp(argv[0], "exit") == 0 && (argc == 1 || (argc == 2 && strcmp(argv[1], "0") == 0)))
+        {
+            /*             if (out)
+                        {
+                            fflush(stdout);
+                            dup2(saved_stdout, STDOUT_FILENO);
+                            close(fd);
+                            close(saved_stdout);
+                        } */
             break;
+        }
 
         // Built-in: echo
         else if (strcmp(argv[0], "echo") == 0)
@@ -199,25 +276,8 @@ int main()
             pid_t pid = fork();
             if (pid == 0)
             {
-                // Child process
-                int fd = -1;
-                if(out){
-                    fd = open(out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                    if (fd == -1)
-                    {
-                        perror("open");
-                        exit(1);
-                    }
-                    if (dup2(fd, STDOUT_FILENO) == -1)
-                    {
-                        perror("dup2");
-                        close(fd);
-                        exit(1);
-                    }
-                    close(fd);
-                }
                 execvp(argv[0], argv);
-                perror("execvp");
+                fprintf(stderr, "%s: command not found\n", argv[0]);
                 exit(1);
             }
             else if (pid > 0)
@@ -225,6 +285,20 @@ int main()
             else
                 perror("fork");
         }
+        /*         if (out)
+                {
+                    fflush(stdout);
+                    dup2(saved_stdout, STDOUT_FILENO);
+                    close(fd);
+                    close(saved_stdout);
+                }
+                if (outE)
+                {
+                    fflush(stderr);
+                    dup2(saved_stderr, STDERR_FILENO);
+                    close(fdE);
+                    close(saved_stderr);
+                } */
     }
     return 0;
 }
