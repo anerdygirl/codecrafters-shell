@@ -24,6 +24,6 @@ make
 ```
  3. Run: 
 ```bash
-./make
+./main
 ```
 *Currently ran into a massive bug, so it's still work in progress.. Feel free to suggest points of improvement.*
