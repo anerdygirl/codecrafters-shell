@@ -26,4 +26,4 @@ make
 ```bash
 ./main
 ```
-*Currently ran into a massive bug, so it's still work in progress.. Feel free to suggest points of improvement.*
+*Currently dealing with a massive bug, so it's still work in progress.. Feel free to suggest points of improvement.*
